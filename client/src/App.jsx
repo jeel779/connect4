@@ -15,6 +15,11 @@ function App() {
   const [showLobby, setShowLobby] = useState(true)
   const [timer, setTimer] = useState(null)
   const [timeLeft, setTimeLeft] = useState(0)
+  const [inviteState, setInviteState] = useState({
+    pendingInvite: null, // 'sent' or 'received'
+    inviteFrom: null // player name who sent the invite
+  })
+  const [countdown, setCountdown] = useState(null)
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode')
     return saved ? JSON.parse(saved) : false
@@ -55,10 +60,28 @@ function App() {
     socket.on('playerJoined', ({ players, gameState }) => {
       setPlayers(players)
       setGameState(gameState)
+      // Start countdown when both players join
+      if (players.length === 2 && !gameState.gameOver) {
+        setCountdown(3)
+        const countdownInterval = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev === null || prev <= 0) {
+              clearInterval(countdownInterval)
+              setTimeout(() => setCountdown(null), 500)
+              return null
+            }
+            return prev - 1
+          })
+        }, 1000)
+      }
     })
 
     socket.on('moveMade', (newGameState) => {
       setGameState(newGameState)
+      // Clear invite state when game ends
+      if (newGameState.gameOver) {
+        setInviteState({ pendingInvite: null, inviteFrom: null })
+      }
     })
 
     socket.on('turnStarted', ({ currentPlayer, timeLimit, startTime }) => {
@@ -68,12 +91,31 @@ function App() {
     socket.on('timeUp', (newGameState) => {
       setGameState(newGameState)
       setTimer(null)
+      setInviteState({ pendingInvite: null, inviteFrom: null })
       alert(`Time's up! Player ${newGameState.winner} wins!`)
     })
 
     socket.on('gameRestarted', (newGameState) => {
       setGameState(newGameState)
       setTimer(null)
+      setInviteState({ pendingInvite: null, inviteFrom: null })
+    })
+
+    socket.on('playAgainInviteReceived', ({ fromPlayer }) => {
+      setInviteState({ pendingInvite: 'received', inviteFrom: fromPlayer })
+    })
+
+    socket.on('playAgainInviteSent', () => {
+      setInviteState({ pendingInvite: 'sent', inviteFrom: null })
+    })
+
+    socket.on('playAgainInviteDeclined', ({ fromPlayer }) => {
+      alert(`${fromPlayer} declined your play again invite`)
+      setInviteState({ pendingInvite: null, inviteFrom: null })
+    })
+
+    socket.on('inviteError', ({ message }) => {
+      alert(message)
     })
 
     socket.on('playerLeft', () => {
@@ -83,6 +125,7 @@ function App() {
       setPlayerNumber(null)
       setPlayers([])
       setShowLobby(true)
+      setInviteState({ pendingInvite: null, inviteFrom: null })
     })
 
     return () => {
@@ -94,6 +137,10 @@ function App() {
       socket.off('turnStarted')
       socket.off('timeUp')
       socket.off('gameRestarted')
+      socket.off('playAgainInviteReceived')
+      socket.off('playAgainInviteSent')
+      socket.off('playAgainInviteDeclined')
+      socket.off('inviteError')
       socket.off('playerLeft')
     }
   }, [])
@@ -140,6 +187,19 @@ function App() {
     socket.emit('restartGame', { roomId })
   }
 
+  const handleSendPlayAgainInvite = () => {
+    socket.emit('sendPlayAgainInvite', { roomId })
+  }
+
+  const handleAcceptPlayAgainInvite = () => {
+    socket.emit('acceptPlayAgainInvite', { roomId })
+  }
+
+  const handleDeclinePlayAgainInvite = () => {
+    socket.emit('declinePlayAgainInvite', { roomId })
+    setInviteState({ pendingInvite: null, inviteFrom: null })
+  }
+
   const handleLeaveRoom = () => {
     if (roomId) {
       socket.emit('leaveRoom', { roomId })
@@ -168,7 +228,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <GameBoard
         gameState={gameState}
         playerNumber={playerNumber}
@@ -180,6 +240,11 @@ function App() {
         onLeaveRoom={handleLeaveRoom}
         darkMode={darkMode}
         toggleDarkMode={toggleDarkMode}
+        inviteState={inviteState}
+        onSendPlayAgainInvite={handleSendPlayAgainInvite}
+        onAcceptPlayAgainInvite={handleAcceptPlayAgainInvite}
+        onDeclinePlayAgainInvite={handleDeclinePlayAgainInvite}
+        countdown={countdown}
       />
     </div>
   )

@@ -118,7 +118,8 @@ io.on('connection', (socket) => {
       players: [{ id: socket.id, name: playerName, playerNumber: 1 }],
       game: game,
       turnTimer: null,
-      turnStartTime: null
+      turnStartTime: null,
+      pendingInvite: null
     });
 
     socket.join(roomId);
@@ -193,15 +194,103 @@ io.on('connection', (socket) => {
       lastMove: moveResult
     });
 
-    // If game is over, clear timer
+    // If game is over, clear timer and clear any pending invites
     if (room.game.gameOver) {
       if (room.turnTimer) {
         clearTimeout(room.turnTimer);
         room.turnTimer = null;
       }
+      // Clear any pending invites when game ends
+      room.pendingInvite = null;
     } else {
       // Start timer for next player
       startTurnTimer(roomId);
+    }
+  });
+
+  socket.on('sendPlayAgainInvite', ({ roomId }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+
+    // Check if game is over
+    if (!room.game.gameOver) {
+      socket.emit('inviteError', { message: 'Game is not over yet' });
+      return;
+    }
+
+    // Set pending invite from this player
+    room.pendingInvite = player.playerNumber;
+
+    // Notify the other player
+    const opponent = room.players.find(p => p.id !== socket.id);
+    if (opponent) {
+      io.to(opponent.id).emit('playAgainInviteReceived', {
+        fromPlayer: player.name || `Player ${player.playerNumber}`
+      });
+    }
+
+    // Confirm to sender
+    socket.emit('playAgainInviteSent');
+  });
+
+  socket.on('acceptPlayAgainInvite', ({ roomId }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+
+    // Check if there's a pending invite
+    if (!room.pendingInvite) {
+      socket.emit('inviteError', { message: 'No pending invite' });
+      return;
+    }
+
+    // Check if invite is from the other player
+    if (room.pendingInvite === player.playerNumber) {
+      socket.emit('inviteError', { message: 'Cannot accept your own invite' });
+      return;
+    }
+
+    // Clear the invite and restart the game
+    room.pendingInvite = null;
+
+    if (room.turnTimer) {
+      clearTimeout(room.turnTimer);
+      room.turnTimer = null;
+    }
+
+    room.game.reset();
+    io.to(roomId).emit('gameRestarted', {
+      board: room.game.board,
+      currentPlayer: room.game.currentPlayer,
+      winner: null,
+      gameOver: false
+    });
+
+    // Start timer for player 1
+    startTurnTimer(roomId);
+  });
+
+  socket.on('declinePlayAgainInvite', ({ roomId }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+
+    // Clear the invite
+    if (room.pendingInvite) {
+      const inviter = room.players.find(p => p.playerNumber === room.pendingInvite);
+      if (inviter) {
+        io.to(inviter.id).emit('playAgainInviteDeclined', {
+          fromPlayer: player.name || `Player ${player.playerNumber}`
+        });
+      }
+      room.pendingInvite = null;
     }
   });
 
@@ -295,6 +384,8 @@ function startTurnTimer(roomId) {
     });
 
     room.turnTimer = null;
+    // Clear any pending invites when game ends due to timeout
+    room.pendingInvite = null;
   }, TURN_TIME_LIMIT);
 
   // Notify clients about the timer start
