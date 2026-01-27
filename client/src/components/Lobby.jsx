@@ -9,8 +9,9 @@ function Lobby({ playerName, setPlayerName, onCreateRoom, onJoinRoom, darkMode, 
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-cyan-50/50 dark:from-blue-900/10 dark:to-cyan-900/10"></div>
         <button
           onClick={toggleDarkMode}
-          className="absolute top-4 right-4 p-2.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hover:scale-110 z-10 shadow-sm"
+          className="absolute top-4 right-4 p-2.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors hover:scale-110 z-[100] shadow-sm cursor-pointer"
           aria-label="Toggle dark mode"
+          style={{ pointerEvents: 'auto' }}
         >
           {darkMode ? (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

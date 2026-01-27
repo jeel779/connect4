@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { io } from 'socket.io-client'
 import GameBoard from './components/GameBoard'
 import Lobby from './components/Lobby'
+import confetti from 'canvas-confetti'
 import './App.css'
 
 const socket = io('http://localhost:3000')
@@ -20,6 +21,7 @@ function App() {
     inviteFrom: null // player name who sent the invite
   })
   const [countdown, setCountdown] = useState(null)
+  const lastWinnerRef = useRef(null)
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode')
     return saved ? JSON.parse(saved) : false
@@ -39,6 +41,64 @@ function App() {
   const toggleDarkMode = () => {
     setDarkMode(!darkMode)
   }
+
+  const triggerConfetti = (currentRoomId, currentWinner) => {
+    // Only trigger if we haven't already celebrated this win
+    const winKey = `${currentRoomId}-${currentWinner}`
+    if (lastWinnerRef.current === winKey) {
+      return
+    }
+    lastWinnerRef.current = winKey
+
+    const duration = 3000
+    const animationEnd = Date.now() + duration
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10000 }
+
+    function randomInRange(min, max) {
+      return Math.random() * (max - min) + min
+    }
+
+    const interval = setInterval(function() {
+      const timeLeft = animationEnd - Date.now()
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval)
+      }
+
+      const particleCount = 50 * (timeLeft / duration)
+      
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+      })
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+      })
+    }, 250)
+
+    setTimeout(() => {
+      confetti({
+        ...defaults,
+        particleCount: 100,
+        origin: { x: 0.5, y: 0.5 },
+        angle: 90,
+        spread: 55,
+        startVelocity: 45
+      })
+    }, 500)
+  }
+
+  useEffect(() => {
+    if (gameState?.gameOver && gameState?.winner === playerNumber && playerNumber && roomId) {
+      const winKey = `${roomId}-${gameState.winner}`
+      if (lastWinnerRef.current !== winKey) {
+        triggerConfetti(roomId, gameState.winner)
+      }
+    }
+  }, [gameState?.gameOver, gameState?.winner, playerNumber, roomId])
 
   useEffect(() => {
     socket.on('roomCreated', ({ roomId, playerNumber }) => {
@@ -60,7 +120,6 @@ function App() {
     socket.on('playerJoined', ({ players, gameState }) => {
       setPlayers(players)
       setGameState(gameState)
-      // Start countdown when both players join
       if (players.length === 2 && !gameState.gameOver) {
         setCountdown(3)
         const countdownInterval = setInterval(() => {
@@ -78,9 +137,11 @@ function App() {
 
     socket.on('moveMade', (newGameState) => {
       setGameState(newGameState)
-      // Clear invite state when game ends
       if (newGameState.gameOver) {
         setInviteState({ pendingInvite: null, inviteFrom: null })
+        if (newGameState.winner && newGameState.winner === playerNumber && roomId) {
+          triggerConfetti(roomId, newGameState.winner)
+        }
       }
     })
 
@@ -92,6 +153,9 @@ function App() {
       setGameState(newGameState)
       setTimer(null)
       setInviteState({ pendingInvite: null, inviteFrom: null })
+      if (newGameState.winner && newGameState.winner === playerNumber && roomId) {
+        triggerConfetti(roomId, newGameState.winner)
+      }
       alert(`Time's up! Player ${newGameState.winner} wins!`)
     })
 
@@ -99,6 +163,7 @@ function App() {
       setGameState(newGameState)
       setTimer(null)
       setInviteState({ pendingInvite: null, inviteFrom: null })
+      lastWinnerRef.current = null
     })
 
     socket.on('playAgainInviteReceived', ({ fromPlayer }) => {

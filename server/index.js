@@ -16,15 +16,14 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-// Game state storage
 const rooms = new Map();
-const TURN_TIME_LIMIT = 30000; // 30 seconds per turn
+const TURN_TIME_LIMIT = 30000; 
 
-// Connect 4 game logic
+
 class Connect4Game {
   constructor() {
     this.board = Array(6).fill(null).map(() => Array(7).fill(0));
-    this.currentPlayer = 1; // 1 or 2
+    this.currentPlayer = 1; 
     this.winner = null;
     this.gameOver = false;
   }
@@ -32,12 +31,10 @@ class Connect4Game {
   makeMove(column) {
     if (this.gameOver || this.winner) return null;
 
-    // Find the lowest empty row in the column
     for (let row = 5; row >= 0; row--) {
       if (this.board[row][column] === 0) {
         this.board[row][column] = this.currentPlayer;
 
-        // Check for win
         if (this.checkWin(row, column)) {
           this.winner = this.currentPlayer;
           this.gameOver = true;
@@ -50,22 +47,21 @@ class Connect4Game {
         return { row, column };
       }
     }
-    return null; // Column is full
+    return null;
   }
 
   checkWin(row, col) {
     const player = this.board[row][col];
     const directions = [
-      [[0, 1], [0, -1]], // horizontal
-      [[1, 0], [-1, 0]], // vertical
-      [[1, 1], [-1, -1]], // diagonal /
-      [[1, -1], [-1, 1]] // diagonal \
+      [[0, 1], [0, -1]],
+      [[1, 0], [-1, 0]], 
+      [[1, 1], [-1, -1]], 
+      [[1, -1], [-1, 1]] 
     ];
 
     for (const [forward, backward] of directions) {
-      let count = 1; // Count the current piece
+      let count = 1;
 
-      // Check forward direction
       let r = row + forward[0];
       let c = col + forward[1];
       while (r >= 0 && r < 6 && c >= 0 && c < 7 && this.board[r][c] === player) {
@@ -74,7 +70,6 @@ class Connect4Game {
         c += forward[1];
       }
 
-      // Check backward direction
       r = row + backward[0];
       c = col + backward[1];
       while (r >= 0 && r < 6 && c >= 0 && c < 7 && this.board[r][c] === player) {
@@ -100,8 +95,6 @@ class Connect4Game {
     this.gameOver = false;
   }
 }
-
-// Generate unique room ID
 function generateRoomId() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
@@ -154,7 +147,6 @@ io.on('connection', (socket) => {
       }
     });
 
-    // Start the game and timer
     startTurnTimer(roomId);
     console.log(`Player ${playerName} joined room: ${roomId}`);
   });
@@ -166,26 +158,22 @@ io.on('connection', (socket) => {
     const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
 
-    // Check if it's the player's turn
     if (room.game.currentPlayer !== player.playerNumber) {
       socket.emit('moveError', { message: 'Not your turn' });
       return;
     }
 
-    // Make the move
     const moveResult = room.game.makeMove(column);
     if (!moveResult) {
       socket.emit('moveError', { message: 'Invalid move' });
       return;
     }
 
-    // Clear the timer
     if (room.turnTimer) {
       clearTimeout(room.turnTimer);
       room.turnTimer = null;
     }
 
-    // Broadcast the move
     io.to(roomId).emit('moveMade', {
       board: room.game.board,
       currentPlayer: room.game.currentPlayer,
@@ -194,16 +182,13 @@ io.on('connection', (socket) => {
       lastMove: moveResult
     });
 
-    // If game is over, clear timer and clear any pending invites
     if (room.game.gameOver) {
       if (room.turnTimer) {
         clearTimeout(room.turnTimer);
         room.turnTimer = null;
       }
-      // Clear any pending invites when game ends
       room.pendingInvite = null;
     } else {
-      // Start timer for next player
       startTurnTimer(roomId);
     }
   });
@@ -215,16 +200,13 @@ io.on('connection', (socket) => {
     const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
 
-    // Check if game is over
     if (!room.game.gameOver) {
       socket.emit('inviteError', { message: 'Game is not over yet' });
       return;
     }
 
-    // Set pending invite from this player
     room.pendingInvite = player.playerNumber;
 
-    // Notify the other player
     const opponent = room.players.find(p => p.id !== socket.id);
     if (opponent) {
       io.to(opponent.id).emit('playAgainInviteReceived', {
@@ -232,7 +214,6 @@ io.on('connection', (socket) => {
       });
     }
 
-    // Confirm to sender
     socket.emit('playAgainInviteSent');
   });
 
@@ -243,19 +224,16 @@ io.on('connection', (socket) => {
     const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
 
-    // Check if there's a pending invite
     if (!room.pendingInvite) {
       socket.emit('inviteError', { message: 'No pending invite' });
       return;
     }
 
-    // Check if invite is from the other player
     if (room.pendingInvite === player.playerNumber) {
       socket.emit('inviteError', { message: 'Cannot accept your own invite' });
       return;
     }
 
-    // Clear the invite and restart the game
     room.pendingInvite = null;
 
     if (room.turnTimer) {
@@ -271,7 +249,6 @@ io.on('connection', (socket) => {
       gameOver: false
     });
 
-    // Start timer for player 1
     startTurnTimer(roomId);
   });
 
@@ -282,7 +259,6 @@ io.on('connection', (socket) => {
     const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
 
-    // Clear the invite
     if (room.pendingInvite) {
       const inviter = room.players.find(p => p.playerNumber === room.pendingInvite);
       if (inviter) {
@@ -311,7 +287,6 @@ io.on('connection', (socket) => {
       gameOver: false
     });
 
-    // Start timer for player 1
     startTurnTimer(roomId);
   });
 
@@ -321,20 +296,16 @@ io.on('connection', (socket) => {
 
     const playerIndex = room.players.findIndex(p => p.id === socket.id);
     if (playerIndex !== -1) {
-      // Notify other players
       socket.to(roomId).emit('playerLeft', {
         playerNumber: room.players[playerIndex].playerNumber
       });
 
-      // Clear timer if exists
       if (room.turnTimer) {
         clearTimeout(room.turnTimer);
       }
 
-      // Remove player from room
       room.players.splice(playerIndex, 1);
 
-      // If no players left, delete room
       if (room.players.length === 0) {
         rooms.delete(roomId);
       }
@@ -346,7 +317,6 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
 
-    // Find and remove player from rooms
     for (const [roomId, room] of rooms.entries()) {
       const playerIndex = room.players.findIndex(p => p.id === socket.id);
       if (playerIndex !== -1) {
@@ -373,7 +343,6 @@ function startTurnTimer(roomId) {
   room.turnStartTime = Date.now();
 
   room.turnTimer = setTimeout(() => {
-    // Time's up! Current player loses
     room.game.gameOver = true;
     room.game.winner = room.game.currentPlayer === 1 ? 2 : 1;
 
@@ -384,11 +353,10 @@ function startTurnTimer(roomId) {
     });
 
     room.turnTimer = null;
-    // Clear any pending invites when game ends due to timeout
     room.pendingInvite = null;
   }, TURN_TIME_LIMIT);
 
-  // Notify clients about the timer start
+
   io.to(roomId).emit('turnStarted', {
     currentPlayer: room.game.currentPlayer,
     timeLimit: TURN_TIME_LIMIT,

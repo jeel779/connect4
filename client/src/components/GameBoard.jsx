@@ -9,8 +9,9 @@ function GameBoard({ gameState, playerNumber, players, roomId, timeLeft, onMakeM
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-cyan-50/50 dark:from-blue-900/10 dark:to-cyan-900/10"></div>
         <button
           onClick={toggleDarkMode}
-          className="absolute top-4 right-4 p-2.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hover:scale-110 z-10"
+          className="absolute top-4 right-4 p-2.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors hover:scale-110 z-[100] shadow-sm cursor-pointer"
           aria-label="Toggle dark mode"
+          style={{ pointerEvents: 'auto' }}
         >
           {darkMode ? (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,9 +67,8 @@ function GameBoard({ gameState, playerNumber, players, roomId, timeLeft, onMakeM
 
   return (
     <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl p-6 w-full max-w-2xl relative overflow-hidden">
-      {/* Countdown Overlay */}
       {countdown !== null && (
-        <div className="absolute inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center rounded-2xl">
+        <div className="absolute inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center rounded-2xl pointer-events-none">
           <div className="text-center">
             {countdown > 0 ? (
               <div className="text-9xl font-bold text-white animate-pulse">
@@ -85,8 +85,9 @@ function GameBoard({ gameState, playerNumber, players, roomId, timeLeft, onMakeM
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-cyan-50/30 dark:from-blue-900/10 dark:to-cyan-900/10 pointer-events-none"></div>
       <button
         onClick={toggleDarkMode}
-        className="absolute top-4 right-4 p-2.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hover:scale-110 z-10 shadow-sm"
+        className="absolute top-4 right-4 p-2.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors hover:scale-110 z-[100] shadow-sm cursor-pointer"
         aria-label="Toggle dark mode"
+        style={{ pointerEvents: 'auto' }}
       >
         {darkMode ? (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,7 +99,6 @@ function GameBoard({ gameState, playerNumber, players, roomId, timeLeft, onMakeM
           </svg>
         )}
       </button>
-      {/* Header */}
       <div className="mb-6 relative z-10">
         <div className="flex justify-between items-start mb-4">
           <div>
@@ -168,7 +168,6 @@ function GameBoard({ gameState, playerNumber, players, roomId, timeLeft, onMakeM
           )}
         </div>
 
-        {/* Timer */}
         {!gameState.gameOver && (
           <div className="mb-4 bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
             <div className="flex items-center justify-between mb-3">
@@ -202,7 +201,6 @@ function GameBoard({ gameState, playerNumber, players, roomId, timeLeft, onMakeM
           </div>
         )}
 
-        {/* Game Status */}
         {gameState.gameOver && (
           <div className={`p-4 rounded-xl mb-4 border-2 shadow-lg ${
             gameState.winner === playerNumber 
@@ -253,12 +251,10 @@ function GameBoard({ gameState, playerNumber, players, roomId, timeLeft, onMakeM
         )}
       </div>
 
-      {/* Game Board */}
       <div className="flex justify-center mb-6 relative z-10">
         <div className="bg-gradient-to-b from-blue-600 to-blue-700 dark:from-blue-800 dark:to-blue-900 p-4 rounded-2xl shadow-2xl border-4 border-blue-800 dark:border-blue-700">
           <div className="grid grid-cols-7 gap-2">
             {Array.from({ length: 7 }).map((_, col) => {
-              // Find the bottommost empty row (where piece will land)
               const findBottomEmptyRow = () => {
                 for (let row = 5; row >= 0; row--) {
                   if (gameState.board[row][col] === 0) {
