@@ -23,9 +23,10 @@ const TURN_TIME_LIMIT = 30000;
 class Connect4Game {
   constructor() {
     this.board = Array(6).fill(null).map(() => Array(7).fill(0));
-    this.currentPlayer = 1; 
+    this.currentPlayer = 1;
     this.winner = null;
     this.gameOver = false;
+    this.winningCells = null;
   }
 
   makeMove(column) {
@@ -35,9 +36,11 @@ class Connect4Game {
       if (this.board[row][column] === 0) {
         this.board[row][column] = this.currentPlayer;
 
-        if (this.checkWin(row, column)) {
+        const winningCells = this.checkWin(row, column);
+        if (winningCells) {
           this.winner = this.currentPlayer;
           this.gameOver = true;
+          this.winningCells = winningCells;
         } else if (this.isBoardFull()) {
           this.gameOver = true;
         } else {
@@ -54,18 +57,20 @@ class Connect4Game {
     const player = this.board[row][col];
     const directions = [
       [[0, 1], [0, -1]],
-      [[1, 0], [-1, 0]], 
-      [[1, 1], [-1, -1]], 
-      [[1, -1], [-1, 1]] 
+      [[1, 0], [-1, 0]],
+      [[1, 1], [-1, -1]],
+      [[1, -1], [-1, 1]]
     ];
 
     for (const [forward, backward] of directions) {
       let count = 1;
+      const winningCells = [{ row, col }];
 
       let r = row + forward[0];
       let c = col + forward[1];
       while (r >= 0 && r < 6 && c >= 0 && c < 7 && this.board[r][c] === player) {
         count++;
+        winningCells.push({ row: r, col: c });
         r += forward[0];
         c += forward[1];
       }
@@ -74,14 +79,15 @@ class Connect4Game {
       c = col + backward[1];
       while (r >= 0 && r < 6 && c >= 0 && c < 7 && this.board[r][c] === player) {
         count++;
+        winningCells.push({ row: r, col: c });
         r += backward[0];
         c += backward[1];
       }
 
-      if (count >= 4) return true;
+      if (count >= 4) return winningCells;
     }
 
-    return false;
+    return null;
   }
 
   isBoardFull() {
@@ -93,6 +99,7 @@ class Connect4Game {
     this.currentPlayer = 1;
     this.winner = null;
     this.gameOver = false;
+    this.winningCells = null;
   }
 }
 function generateRoomId() {
@@ -179,7 +186,8 @@ io.on('connection', (socket) => {
       currentPlayer: room.game.currentPlayer,
       winner: room.game.winner,
       gameOver: room.game.gameOver,
-      lastMove: moveResult
+      lastMove: moveResult,
+      winningCells: room.game.winningCells
     });
 
     if (room.game.gameOver) {
