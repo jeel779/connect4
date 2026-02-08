@@ -66,7 +66,7 @@ function GameBoard({ gameState, playerNumber, players, roomId, timeLeft, onMakeM
   }
 
   return (
-    <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl p-6 w-full max-w-2xl relative overflow-hidden">
+    <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl p-6 pt-12 w-full max-w-2xl relative overflow-hidden">
       {countdown !== null && (
         <div className="absolute inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center rounded-2xl pointer-events-none">
           <div className="text-center">
